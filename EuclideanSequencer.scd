@@ -1,11 +1,22 @@
 // =====================================================================
 // Christopher Latina
-// Euclidean Sequencer
+// Triggered Euclidean Sequencer
+// Spring 2015
+//
+// Please recompile class library before each use
+// To install dependant Bjorklund Quark, run: Quark.gui
+// (highlight the command and press command enter)
+// Select the Quark and then recompile the class library
 // =====================================================================
+
 (
 var window;
 s = Server.default;
+s.options.outDevice_("Built-in Output");
+//s.options.outDevice_("Soundflower (2ch)");
+
 s.boot;
+
 
 s.waitForBoot({
 
@@ -22,7 +33,7 @@ s.waitForBoot({
 
 	}).add;
 
-	//Modified Kick sound from soundonsound.com
+	//Modified Kick sound from DrumSynths.scd example
 	SynthDef(\SOSkick,
 		{ arg  amp = 0, out = 0;
 			var mul = 0.8, freq = 70, mod_freq = 3, mod_index = 3, sustain = 0.4, beater_noise_level = 0.03;
@@ -47,6 +58,7 @@ s.waitForBoot({
 		}
 	).add;
 
+	//Modified snare909 sound from snare909.scd example
 	SynthDef(\snare909,{ arg out =0,amp=0,mul=1,velocity=1;
 		var excitation, membrane;
 
@@ -64,6 +76,9 @@ s.waitForBoot({
 		Out.ar(out, membrane!2);
 	}).add;
 
+
+	//Hats synthesis modified from
+	//"http://rumblesan.com/post/53271713518/drum-sounds-in-supercollider-part-1"
 	SynthDef(\closedhat, { arg amp = 0;
 		var hatosc, hatenv, hatnoise, hatoutput;
 
@@ -111,38 +126,14 @@ s.waitForBoot({
 
 
 	SynthDef(\sendTrig,{
-		var trackb,trackh,trackq,temp, fft, in, lock=0, onsets, pips, pips2, pips3, perc, threshes;
-		threshes = (0.60,0.70 .. 0.90);
+		var trackb,trackh,trackq,temp, fft, in;
 
-
-		b = Buffer.alloc(s,1024,1); //for sampling rates 44100 and 48000
+		//For onset-based beat tracking
+		/*b = Buffer.alloc(s,1024,1); //for sampling rates 44100 and 48000
 		in = AudioIn.ar(1);
-		//in = Dust.ar(1);
 		fft = FFT(b, in);
 
-		onsets = Onsets.kr(fft, threshes);
-		~envshort = Env.adsr(0.009, 0.13, 0.15, 0.9, 1, -3);
-
-		~envmid = Env.adsr(0.003, 0.25, 1.1, 2.4, 1, -3);
-
-		~envlong = Env.adsr(0.3, 0.25, 12.1, 12.4, 1, -3);
-
-		perc = Env.perc(0.01, 0.5, 0.4, -5);
-		pips = RLPF.ar(LFSaw.ar((threshes).linexp(0,1, 40, 800), 0, EnvGen.kr(~envshort, onsets)).mean + LFTri.ar((threshes).linexp(0,1, 55, 220), 0, EnvGen.kr(~envlong, onsets)).mean, (threshes).linlin(0,1, 400, 16000)*EnvGen.kr(~envshort,onsets));
-		//Env.perc(0.1, 1.9, 0.5, -6)
-
-		pips2 = RLPF.ar(LFTri.ar(50,0, EnvGen.kr(~envmid, onsets)).mean+ LFTri.ar((threshes).linexp(0,1, 400, 20), 0, EnvGen.kr(~envmid, onsets).mean) + LFTri.ar((threshes).linexp(0,1, 50*3*3*3, 50*3), 0, EnvGen.kr(~envmid, onsets)), 220*EnvGen.kr(~envmid, onsets));
-
-		pips3 = RLPF.ar(LFSaw.ar((threshes).linexp(0,1, 40, 800), 0, EnvGen.kr(~envlong, onsets)).mean + LFTri.ar((threshes).linexp(0,1, 220, 20), 0, EnvGen.kr(~envlong, onsets)).mean, (threshes).linlin(0,1, 40, 16000)*EnvGen.kr(~envlong,onsets));
-		//Env.perc(0.1, 1.9, 0.5, -6)
-
-
-
-		//Pan and output
-		#x, y = Rotate2.ar(pips, Mix.ar([pips2,pips3]), LFTri.kr(0.2));
-		//Out.ar(0,0.3*[x,y]*MouseY.kr(0,1, 0));
-
-		//#trackb,trackh,trackq,temp=BeatTrack.kr(fft, MouseX.kr(0.4999,1,0));
+		#trackb,trackh,trackq,temp=BeatTrack.kr(fft, MouseX.kr(0.4999,1,0));*/
 
 		SendTrig.kr(Impulse.kr((114/60.0)*4),0,1);
 
@@ -160,7 +151,7 @@ s.waitForBoot({
 		};
 	},'/tr', s.addr);
 
-
+	//Default values
 	~kick      = ~patternMaker.value(\SOSkick, 0, 16, ~velocity);
 	~closedhat = ~patternMaker.value(\closedhat, 0, 21, ~velocity);
 	~openhat   = ~patternMaker.value(\openhat, 0, 33, ~velocity);
@@ -268,10 +259,14 @@ s.waitForBoot({
 		//Number
 		numberbox = StaticText(window, Rect(320, 0, 40,50))
 		.string_(model[\myValue])
+		.stringColor_(Color.white)
+		.font_(Font("Arial Rounded MT Bold", 20))
 		.action_({|view| setValueFunction.value(ctrlSpec.map(view.value))});
 
 		//Number
-		numberbox2 = EZNumber(window,  100@50, label:" Sequence Length ", controlSpec: ctrlSpec2 )
+		numberbox2 = EZNumber(window,  110@50, label:"Length", controlSpec: ctrlSpec2 )
+		.setColors(Color.new255(60,140,60),Color.white,background: Color.new255(60,140,60), numTypingColor:Color.red)
+		.font_(Font("Arial Rounded MT Bold", 14))
 		.action_({|view|
 			ctrlSpec2 = ControlSpec(0, view.value, \lin, 1, 0, );
 			ctrlSpec = ControlSpec(0, ctrlSpec2.map(view.value), \lin, 1, 0, );
@@ -281,6 +276,7 @@ s.waitForBoot({
 		//Button
 		button = Button(window, Rect(340,00, 50, 50))
 		.states_([["Trigger"], ["Trigger"]])
+		.font_(Font("Arial Rounded MT Bold", 12))
 		.action_({|v|
 			if(v.value==0){
 			}{
@@ -332,8 +328,19 @@ s.waitForBoot({
 	//window.onClose_({model.removeDependant(updater); model2.removeDependant(updater2); model3.removeDependant(updater3); control1.remove; control2.remove; triggernote.remove; numberbox.remove;});
 	};
 
-	window = Window("myWindow", Rect(100,200, 500, 250));
+
+	window = Window("Latina: Triggered Euclidean Sequencer", Rect(100,200, 500, 280));
 	window.addFlowLayout( 10@10, 20@5 );
+
+	window.view.background_(Color.new255(50,50,50));
+
+	//Title
+	StaticText(window, Rect(0, 0, 500, 30))
+		.string_("Triggered Euclidean Sequencer")
+		.align_(\center)
+		.stringColor_(Color.white)
+		.font_(Font("Arial Rounded MT Bold", 20));
+
 	~row1 = ~generateUI.value(window, \kick,1, 2, 40 );
 	~row2 = ~generateUI.value(window, \snare, 3, 4, 42);
 	~row3 = ~generateUI.value(window, \closedhat, 5, 6, 36);
@@ -342,14 +349,8 @@ s.waitForBoot({
 
 	window.front;
 	window.onClose_({
-		w.free;z.free;s.freeAll;o.remove;
-		~row1.model.removeDependant(updater);
-		~row1.model2.removeDependant(updater2);
-		~row1.model3.removeDependant(updater3);
-		~row1.control1.remove;
-		~row1.control2.remove;
-		~row1.triggernote.remove;
-		~row1.numberbox.remove;
+		w.free;z.free;s.freeAll;o.free;
+		~row1.free; ~row2.free; ~row3.free;
 	});
 
 	//s.makeWindow;
